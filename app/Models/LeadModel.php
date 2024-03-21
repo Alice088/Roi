@@ -4,25 +4,39 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use AmoCRM\Collections\CustomFieldsValuesCollection;
+use AmoCRM\Models\LeadModel as BaseLeadModel;
+use App\Traits\calculateProfitTrait;
 
 class LeadModel extends Model
 {
     use HasFactory;
+    use calculateProfitTrait;
 
-    public static function calculateProfit(string|int|null $price, string|int|null $cost_price): int
+    /**
+     * Lead model
+     * @var BaseLeadModel $lead
+     */
+    private $lead;
+
+    public function __construct(BaseLeadModel|null $lead)
     {
-        if (!is_null($price) && !is_null($cost_price)) {
-            return +$price - +$cost_price;
-        } else {
-            return 0;
-        }
+        $this->lead = $lead;
     }
 
-    public static function getFieldValueByName(
-        CustomFieldsValuesCollection|null $customFieldsValuesCollection,
-        string $fieldName
-    ): ?int {
+    public function getLead(): BaseLeadModel
+    {
+        return $this->lead;
+    }
+
+    public function hasCustomFields(): bool
+    {
+        return !is_null($this->lead->getCustomFieldsValues());
+    }
+
+    public function getFieldValueByName(string $fieldName): ?int
+    {
+        $customFieldsValuesCollection = $this->lead->getCustomFieldsValues();
+
         if (is_null($customFieldsValuesCollection)) {
             return null;
         } {
