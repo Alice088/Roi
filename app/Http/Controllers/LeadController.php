@@ -8,66 +8,84 @@ use AmoCRM\Client\AmoCRMApiClient;
 use AmoCRM\Models\CustomFieldsValues\NumericCustomFieldValuesModel;
 use AmoCRM\Models\CustomFieldsValues\ValueCollections\NumericCustomFieldValueCollection;
 use AmoCRM\Models\CustomFieldsValues\ValueModels\NumericCustomFieldValueModel;
+use App\Jobs\ProcessTugrikIntegration;
+use Cache;
 
 class LeadController extends Controller
 {
     public function update(Request $request)
     {
-        $webHookData = $request->input('leads');
+        try {
+            $webHookData = $request->input('leads');
 
-        /** @var \AmoCRM\Client\AmoCRMApiClient $apiClient */
-        $apiClient = app(AmoCRMApiClient::class);
+            /** @var \AmoCRM\Client\AmoCRMApiClient $apiClient */
+            $apiClient        = app(AmoCRMApiClient::class);
+            $leads            = $apiClient->leads();
+            $lead             = new LeadModel($leads->getOne($webHookData["update"][0]["id"]));
+            $currentPrice     = $webHookData["update"][0]["price"];
+            $currentCostPrice = $webHookData["update"][0]["custom_fields"][0]["values"][0]["value"];
 
-        $leads   = $apiClient->leads();
-        $gotLead = $leads->getOne($webHookData["update"][0]["id"]);
+            if ($lead->hasCustomFields() && (Cache::get("oldPrice") !== $currentPrice || Cache::get("oldCostPrice") !== $currentCostPrice)) {
+                Cache::set("oldPrice", $currentPrice);
+                Cache::set("oldCostPrice", $currentCostPrice);
 
-        if (!is_null($gotLead->getCustomFieldsValues())) {
-            $profitField = (new NumericCustomFieldValueModel())->setValue(
-                LeadModel::calculateProfit(
-                    $gotLead->getPrice(),
-                    LeadModel::getFieldValueByName($gotLead->getCustomFieldsValues(), "Себестоимость")
-                )
-            );
+                $profitCollection = (new NumericCustomFieldValueCollection())->add(
+                    (new NumericCustomFieldValueModel())->setValue($lead->calculateProfit())
+                );
 
-            $profitCollection = (new NumericCustomFieldValueCollection())->add($profitField);
-            $profitModel      = (new NumericCustomFieldValuesModel())
-                ->setValues($profitCollection)
-                ->setFieldName("Прибыль")
-                ->setFieldId(env("AMOCRM_INTEGRATION_TUGRIK_PROFIT_FIELD_ID"));
+                $profitModel = (new NumericCustomFieldValuesModel())
+                    ->setValues($profitCollection)
+                    ->setFieldName("Прибыль")
+                    ->setFieldId(env("AMOCRM_INTEGRATION_TUGRIK_PROFIT_FIELD_ID"));
 
-            $gotLead->getCustomFieldsValues()->add($profitModel);
+                $lead->getLead()->getCustomFieldsValues()->add($profitModel);
 
-            $leads->updateOne($gotLead);
+                $leads->updateOne($lead->getLead());
+
+                return response(status: 200);
+            }
+
+            return response(status: 200);
+        } catch (\Exception $error) {
+            return response("Something went wrong", 500);
         }
     }
 
     public function add(Request $request)
     {
-        $webHookData = $request->input('leads');
+        try {
+            $webHookData = $request->input('leads');
 
-        /** @var \AmoCRM\Client\AmoCRMApiClient $apiClient */
-        $apiClient = app(AmoCRMApiClient::class);
+            /** @var \AmoCRM\Client\AmoCRMApiClient $apiClient */
+            $apiClient        = app(AmoCRMApiClient::class);
+            $leads            = $apiClient->leads();
+            $lead             = new LeadModel($leads->getOne($webHookData["add"][0]["id"]));
+            $currentPrice     = $webHookData["add"][0]["price"];
+            $currentCostPrice = $webHookData["add"][0]["custom_fields"][0]["values"][0]["value"];
 
-        $leads   = $apiClient->leads();
-        $gotLead = $leads->getOne($webHookData["add"][0]["id"]);
+            if ($lead->hasCustomFields() && (Cache::get("oldPrice") !== $currentPrice || Cache::get("oldCostPrice") !== $currentCostPrice)) {
+                Cache::set("oldPrice", $currentPrice);
+                Cache::set("oldCostPrice", $currentCostPrice);
 
-        if (!is_null($gotLead->getCustomFieldsValues())) {
-            $profitField = (new NumericCustomFieldValueModel())->setValue(
-                LeadModel::calculateProfit(
-                    $gotLead->getPrice(),
-                    LeadModel::getFieldValueByName($gotLead->getCustomFieldsValues(), "Себестоимость")
-                )
-            );
+                $profitCollection = (new NumericCustomFieldValueCollection())->add(
+                    (new NumericCustomFieldValueModel())->setValue($lead->calculateProfit())
+                );
 
-            $profitCollection = (new NumericCustomFieldValueCollection())->add($profitField);
-            $profitModel      = (new NumericCustomFieldValuesModel())
-                ->setValues($profitCollection)
-                ->setFieldName("Прибыль")
-                ->setFieldId(env("AMOCRM_INTEGRATION_TUGRIK_PROFIT_FIELD_ID"));
+                $profitModel = (new NumericCustomFieldValuesModel())
+                    ->setValues($profitCollection)
+                    ->setFieldName("Прибыль")
+                    ->setFieldId(env("AMOCRM_INTEGRATION_TUGRIK_PROFIT_FIELD_ID"));
 
-            $gotLead->getCustomFieldsValues()->add($profitModel);
+                $lead->getLead()->getCustomFieldsValues()->add($profitModel);
 
-            $leads->updateOne($gotLead);
+                $leads->updateOne($lead->getLead());
+
+                return response(status: 200);
+            }
+
+            return response(status: 200);
+        } catch (\Exception $error) {
+            return response("Something went wrong", 500);
         }
     }
 }
