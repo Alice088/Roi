@@ -18,10 +18,10 @@ class LeadController extends Controller
             $webHookData = $request->input('leads');
 
             /** @var \AmoCRM\Client\AmoCRMApiClient $apiClient */
-            $apiClient = app(AmoCRMApiClient::class);
-            $leads = $apiClient->leads();
-            $lead = new LeadModel($leads->getOne($webHookData["update"][0]["id"]));
-            $currentPrice = $webHookData["update"][0]["price"];
+            $apiClient        = app(AmoCRMApiClient::class);
+            $leads            = $apiClient->leads();
+            $lead             = new LeadModel($leads->getOne($webHookData["update"][0]["id"]));
+            $currentPrice     = $webHookData["update"][0]["price"];
             $currentCostPrice = $webHookData["update"][0]["custom_fields"][0]["values"][0]["value"];
 
             if ($lead->hasCustomFields() && (Cache::get("oldPrice") !== $currentPrice || Cache::get("oldCostPrice") !== $currentCostPrice)) {
@@ -40,8 +40,6 @@ class LeadController extends Controller
                 $lead->getLead()->getCustomFieldsValues()->add($profitModel);
 
                 $leads->updateOne($lead->getLead());
-
-                return response(status: 200);
             }
 
             return response(status: 200);
@@ -56,10 +54,10 @@ class LeadController extends Controller
             $webHookData = $request->input('leads');
 
             /** @var \AmoCRM\Client\AmoCRMApiClient $apiClient */
-            $apiClient = app(AmoCRMApiClient::class);
-            $leads = $apiClient->leads();
-            $lead = new LeadModel($leads->getOne($webHookData["add"][0]["id"]));
-            $currentPrice = $webHookData["add"][0]["price"];
+            $apiClient        = app(AmoCRMApiClient::class);
+            $leads            = $apiClient->leads();
+            $lead             = new LeadModel($leads->getOne($webHookData["add"][0]["id"]));
+            $currentPrice     = $webHookData["add"][0]["price"];
             $currentCostPrice = $webHookData["add"][0]["custom_fields"][0]["values"][0]["value"];
 
             if ($lead->hasCustomFields() && (Cache::get("oldPrice") !== $currentPrice || Cache::get("oldCostPrice") !== $currentCostPrice)) {
@@ -78,8 +76,6 @@ class LeadController extends Controller
                 $lead->getLead()->getCustomFieldsValues()->add($profitModel);
 
                 $leads->updateOne($lead->getLead());
-
-                return response(status: 200);
             }
 
             return response(status: 200);
